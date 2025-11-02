@@ -1,11 +1,12 @@
 import express from 'express'
+import { deleteUser, getAllUsers, getUser, updateUser } from '../controllers/userController.js'
 
 const userRouter = express.Router()
 
-userRouter.get('/')
+userRouter.get('/', getAllUsers)
 
-userRouter.get('/:id')
+userRouter.get('/:id', getUser)
 
-userRouter.put('/:id')
+userRouter.put('/:id', updateUser)
 
-userRouter.delete('/:id')
+userRouter.delete('/:id', deleteUser)
