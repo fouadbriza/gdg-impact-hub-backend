@@ -1,3 +1,4 @@
+import { deleteFromCloudinary } from "../middlewares/upload.js"
 import prisma from "../prisma.js"
 
 export const getAllUsersService = async () => {
@@ -58,6 +59,46 @@ export const updateUserService = async (reqId, reqBody) => {
   const updatedUser = await prisma.user.update({
     where: { id: reqId },
     data: reqBody,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      bio: true,
+      avatarUrl: true,
+      githubHandle: true,
+      linkedinUrl: true,
+      updatedAt: true,
+    }
+  })
+
+  return updatedUser
+}
+
+export const updateAvatarService = async (reqId, avatarUrl) => {
+  const user = await prisma.user.findUnique({
+    where: { id: reqId },
+    select: { avatarUrl: true }
+  })
+
+  if (!user) {
+    const error = new Error('User not found')
+    error.statusCode = 404
+    throw error
+  }
+
+  // delete the older profile picture if it exists in cloudinary
+  if (user.avatarUrl) {
+    try {
+      await deleteFromCloudinary(user.avatarUrl)
+    } catch (error) {
+      console.error('Failed to delete old avatar:', error.message)
+    }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: {id: reqId},
+    data: { avatarUrl },
     select: {
       id: true,
       name: true,

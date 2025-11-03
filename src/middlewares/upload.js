@@ -11,6 +11,18 @@ const storage = new CloudinaryStorage({
   }
 })
 
-const upload = multer({ storage })
+export const upload = multer({ storage })
 
-export default upload
+export const deleteFromCloudinary = async (imageUrl) => {
+  try {
+    const urlParts = imageUrl.split('/')
+    const publicIdWithExtension = urlParts[urlParts.length - 1]
+    const publicId = `gdg_impact_hub_uploads/${publicIdWithExtension.split('.')[0]}`
+
+    const result = await cloudinary.uploader.destroy(publicId)
+    return result
+  } catch (error) {
+    console.log('Error while deleting from Cloudinary', error.message)
+    throw error
+  }
+}
