@@ -12,3 +12,20 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Project {
+  id              Int     @id @default(autoincrement())
+  name            String  @unique
+  description     String
+  category        String
+  mentor          String
+  numberOfMembers Int
+  impactArea      String
+}
+
+model Announcement {
+  id           Int      @id @default(autoincrement())
+  title        String
+  content      String
+  creationDate DateTime @default(now())
+}
