@@ -1,5 +1,6 @@
 import { deleteFromCloudinary } from "../middlewares/upload.js"
 import prisma from "../config/prisma.js"
+import updateUserSchema from "../validations/user.validation.js"
 
 export const getAllUsersService = async () => {
   return await prisma.user.findMany(
@@ -34,31 +35,20 @@ export const getUserService = async (reqId) => {
 }
 
 export const updateUserService = async (reqId, reqBody) => {
-  const allowedFields = [
-    "name",
-    "bio",
-    "avatarUrl",
-    "githubHandle",
-    "linkedinUrl",
-  ]
+  const validationResult = updateUserSchema.safeParse(reqBody)
 
-  const updateData = Object.keys(reqBody)
-  .filter((key) => allowedFields.includes(key))
-  .reduce((obj, key) => {
-    obj[key] = reqBody[key]
-    return obj
-  }, {})
-
-  // check if there's is any valid fields provided
-  if (Object.keys(updateData).length === 0) {
-    const error = new Error('No valid fields provided for updates')
+  if (!validationResult.success) {
+    const error = new Error('Validation failed')
     error.statusCode = 400
+    error.details = validationResult.error
     throw error
   }
 
+  const validatedData = validationResult.data
+
   const updatedUser = await prisma.user.update({
     where: { id: reqId },
-    data: reqBody,
+    data: validatedData,
     select: {
       id: true,
       name: true,
