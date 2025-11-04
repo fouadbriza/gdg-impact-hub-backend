@@ -4,7 +4,7 @@ import {
   getUserService,
   updateAvatarService,
   updateUserService,
-} from "../services/userService.js";
+} from "../services/user.service.js";
 
 export const getAllUsers = async (req, res) => {
   try {

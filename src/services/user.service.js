@@ -1,5 +1,5 @@
 import { deleteFromCloudinary } from "../middlewares/upload.js"
-import prisma from "../prisma.js"
+import prisma from "../config/prisma.js"
 
 export const getAllUsersService = async () => {
   return await prisma.user.findMany(
