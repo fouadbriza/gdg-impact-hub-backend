@@ -10,6 +10,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as GitHubStrategy } from 'passport-github2';
 import jwt from 'jsonwebtoken';
 import { errorHandler } from './middlewares/error.js';
+import router from "./routers/router.js";
 
 // Load environment variables
 dotenv.config();
@@ -62,7 +63,6 @@ app.use('/api', router)
 // Configure SendGrid
 sgMail.setApiKey(env.SENDGRID_API_KEY);
 
-// Configure Cloudinary
 cloudinary.config({
   cloud_name: env.CLOUDINARY_CLOUD_NAME,
   api_key: env.CLOUDINARY_API_KEY,
