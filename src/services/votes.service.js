@@ -1,4 +1,4 @@
-import prisma from '../config/prisma.js'
+import prisma from '../config/db.js'
 
 export const retrieveCountsService = async (projectId) => {
   const count = await prisma.vote.count({

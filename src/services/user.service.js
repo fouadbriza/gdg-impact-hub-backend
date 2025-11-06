@@ -1,5 +1,5 @@
 import { deleteFromCloudinary } from "../middlewares/upload.js"
-import prisma from "../config/prisma.js"
+import prisma from "../config/db.js"
 import updateUserSchema from "../validations/user.validation.js"
 
 export const getAllUsersService = async () => {
