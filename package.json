@@ -1,16 +1,59 @@
 {
+  "name": "gdg-impact-hub-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write \"src/**/*.js\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "keywords": [
+    "gdg",
+    "impact-hub",
+    "express",
+    "typescript"
+  ],
+  "author": "GDG Community",
+  "license": "MIT",
+  "description": "Backend for GDG Impact Hub - A platform for managing GDG events, projects, and community engagement.",
   "dependencies": {
     "@prisma/client": "^6.18.0",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^1.37.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "init": "^0.1.2",
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0",
     "nodemon": "^3.1.10",
-    "prisma": "^6.18.0"
+    "prisma": "^6.18.0",
+    "zod": "^4.1.12"
   },
-  "scripts": {
-    "dev": "nodemon src/server.js"
+  "devDependencies": {
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.1.1",
+    "prisma": "^6.18.0",
+    "supertest": "^6.3.3"
   },
-  "type": "module"
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/z-sohaib/gdg-impact-hub-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/z-sohaib/gdg-impact-hub-backend/issues"
+  },
+  "homepage": "https://github.com/z-sohaib/gdg-impact-hub-backend#readme"
 }
