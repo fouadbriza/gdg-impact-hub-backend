@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// GDG ImpactHub Database Schema
+// Learn more about Prisma: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -13,22 +10,459 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// USERS & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  role          Role     @default(MEMBER)
+  bio           String?  @db.Text
+  avatarUrl     String?  @map("avatar_url")
+  githubHandle  String?  @map("github_handle")
+  linkedinUrl   String?  @map("linkedin_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  ownedProjects         Project[]              @relation("ProjectOwner")
+  teamMemberships       TeamMember[]
+  projectUpdates        ProjectUpdate[]
+  projectRoleRequests   ProjectRoleRequest[]
+  votes                 Vote[]
+  featuredHighlights    Highlight[]            @relation("HighlightFeaturedBy")
+  createdEvents         Event[]
+  mentorshipProfile     MentorshipProfile?
+  requestedMentorships  MentorshipRequest[]
+  mentorshipSessions    MentorshipSession[]
+  notifications         Notification[]
+  interests             UserInterest[]
+  badges                UserBadge[]
+  contributions         Contribution[]
+
+  @@map("users")
+}
+
+// ============================================
+// PROJECTS & TEAMS
+// ============================================
+
+model Project {
+  id            String         @id @default(uuid()) @db.Uuid
+  title         String
+  shortDesc     String         @map("short_desc")
+  description   String         @db.Text
+  category      String
+  impactArea    String         @map("impact_area")
+  status        ProjectStatus  @default(IDEA)
+  githubRepoUrl String?        @map("github_repo_url")
+  website       String?
+  ownerId       String         @map("owner_id") @db.Uuid
+  teamId        String?        @map("team_id") @db.Uuid
+  memberCount   Int            @default(0) @map("member_count")
+  maxMembers    Int            @default(10) @map("max_members")
+  featured      Boolean        @default(false)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  archivedAt    DateTime?      @map("archived_at")
+
+  // Relations
+  owner                 User                    @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  team                  Team?                   @relation(fields: [teamId], references: [id])
+  teamMembers           TeamMember[]
+  updates               ProjectUpdate[]
+  roleRequests          ProjectRoleRequest[]
+  votes                 Vote[]
+  highlights            Highlight[]
+  projectEvents         ProjectEvent[]
+  mentorshipRequests    MentorshipRequest[]
+  mentorshipSessions    MentorshipSession[]
+  githubIntegration     GithubIntegration?
+  contributions         Contribution[]
+
+  @@index([ownerId])
+  @@index([teamId])
+  @@index([status])
+  @@index([featured])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+model Team {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String   @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  projects Project[]
+  members  TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String?  @map("project_id") @db.Uuid
+  teamId    String   @map("team_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      String
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  // Relations
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model ProjectUpdate {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("project_updates")
+}
+
+model ProjectRoleRequest {
+  id          String    @id @default(uuid()) @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  requesterId String    @map("requester_id") @db.Uuid
+  roleNeeded  String    @map("role_needed")
+  slots       Int
+  description String    @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  expiresAt   DateTime? @map("expires_at")
+  isOpen      Boolean   @default(true) @map("is_open")
+
+  // Relations
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requester User    @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([requesterId])
+  @@index([isOpen])
+  @@map("project_role_requests")
+}
+
+// ============================================
+// VOTING & HIGHLIGHTS
+// ============================================
+
+model Vote {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("votes")
+}
+
+model Highlight {
+  id         String    @id @default(uuid()) @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  reason     String
+  featuredBy String    @map("featured_by") @db.Uuid
+  featuredAt DateTime  @default(now()) @map("featured_at")
+  expiresAt  DateTime? @map("expires_at")
+
+  // Relations
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  featuredByUser User  @relation("HighlightFeaturedBy", fields: [featuredBy], references: [id])
+
+  @@index([projectId])
+  @@index([featuredBy])
+  @@index([featuredAt])
+  @@map("highlights")
+}
+
+// ============================================
+// EVENTS
+// ============================================
+
+model Event {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String   @db.Text
+  eventType   String   @map("event_type")
+  startAt     DateTime @map("start_at")
+  endAt       DateTime @map("end_at")
+  location    String
+  createdBy   String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator       User           @relation(fields: [createdBy], references: [id])
+  projectEvents ProjectEvent[]
+
+  @@index([createdBy])
+  @@index([startAt])
+  @@map("events")
+}
+
+model ProjectEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  demoSlot  String?  @map("demo_slot")
+  result    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([eventId])
+  @@map("project_events")
+}
+
+// ============================================
+// MENTORSHIP
+// ============================================
+
+model MentorshipProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  bio            String   @db.Text
+  skills         String[]
+  availability   Boolean  @default(true)
+  hourlyCapacity Int      @map("hourly_capacity")
+  rating         Float    @default(0.0)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentorshipRequests MentorshipRequest[]
+
+  @@map("mentorship_profiles")
+}
+
+model MentorshipRequest {
+  id              String            @id @default(uuid()) @db.Uuid
+  projectId       String            @map("project_id") @db.Uuid
+  requestedBy     String            @map("requested_by") @db.Uuid
+  mentorProfileId String            @map("mentor_profile_id") @db.Uuid
+  status          MentorshipStatus  @default(PENDING)
+  message         String            @db.Text
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  project        Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requester      User                @relation(fields: [requestedBy], references: [id], onDelete: Cascade)
+  mentorProfile  MentorshipProfile   @relation(fields: [mentorProfileId], references: [id], onDelete: Cascade)
+  sessions       MentorshipSession[]
+
+  @@index([projectId])
+  @@index([requestedBy])
+  @@index([mentorProfileId])
+  @@index([status])
+  @@map("mentorship_requests")
+}
+
+model MentorshipSession {
+  id                  String   @id @default(uuid()) @db.Uuid
+  mentorshipRequestId String   @map("mentorship_request_id") @db.Uuid
+  projectId           String   @map("project_id") @db.Uuid
+  mentorId            String   @map("mentor_id") @db.Uuid
+  scheduledAt         DateTime @map("scheduled_at")
+  durationMinutes     Int      @map("duration_minutes")
+  mode                String
+  location            String?
+  notes               String?  @db.Text
+  recordingUrl        String?  @map("recording_url")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  mentorshipRequest MentorshipRequest @relation(fields: [mentorshipRequestId], references: [id], onDelete: Cascade)
+  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mentor            User              @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([mentorshipRequestId])
+  @@index([projectId])
+  @@index([mentorId])
+  @@index([scheduledAt])
+  @@map("mentorship_sessions")
+}
+
+// ============================================
+// NOTIFICATIONS & USER ENGAGEMENT
+// ============================================
+
+model Notification {
+  id        String             @id @default(uuid()) @db.Uuid
+  userId    String             @map("user_id") @db.Uuid
+  type      NotificationType
+  message   String             @db.Text
+  link      String?
+  isRead    Boolean            @default(false) @map("is_read")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model UserInterest {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tag       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_interests")
+}
+
+// ============================================
+// BADGES & GAMIFICATION
+// ============================================
+
+model Badge {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String   @db.Text
+  iconUrl     String   @map("icon_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  userBadges UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  badgeId   String   @map("badge_id") @db.Uuid
+  awardedAt DateTime @default(now()) @map("awarded_at")
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@map("user_badges")
+}
+
+// ============================================
+// GITHUB INTEGRATION
+// ============================================
+
+model GithubIntegration {
+  id            String    @id @default(uuid()) @db.Uuid
+  projectId     String    @unique @map("project_id") @db.Uuid
+  repoOwner     String    @map("repo_owner")
+  repoName      String    @map("repo_name")
+  repoUrl       String    @map("repo_url")
+  stars         Int       @default(0)
+  forks         Int       @default(0)
+  contributors  String[]
+  lastSyncedAt  DateTime? @map("last_synced_at")
+  syncEnabled   Boolean   @default(true) @map("sync_enabled")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("github_integrations")
+}
+
+model Contribution {
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  commitSha     String   @map("commit_sha")
+  commitMessage String   @db.Text @map("commit_message")
+  commitUrl     String   @map("commit_url")
+  authoredAt    DateTime @map("authored_at")
+  recordedAt    DateTime @default(now()) @map("recorded_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([authoredAt])
+  @@map("contributions")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
 enum Role {
   MEMBER
   MENTOR
   ADMIN
+
+  @@map("role")
 }
 
-model User {
-  id            String    @id @default(uuid())
-  name          String  
-  email         String    @unique
-  passwordHash  String    @map("password_hash")
-  role          Role      @default(MEMBER)
-  bio           String?
-  avatarUrl     String?   @map("avatar_url")
-  githubHandle  String?   @map("github_handle")
-  linkedinUrl   String?   @map("linkedin_url")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+enum ProjectStatus {
+  IDEA
+  PROTOTYPE
+  LIVE
+  ARCHIVED
+
+  @@map("project_status")
+}
+
+enum MentorshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+
+  @@map("mentorship_status")
+}
+
+enum NotificationType {
+  PROJECT_UPDATE
+  MENTOR_JOINED
+  MEMBER_JOINED
+  PROJECT_FEATURED
+  MENTOR_REQUEST
+  GENERAL
+
+  @@map("notification_type")
 }
