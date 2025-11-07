@@ -1,14 +1,21 @@
-import { deleteFromCloudinary } from "../middlewares/upload.js"
-import prisma from "../config/db.js"
-import updateUserSchema from "../validations/user.validation.js"
+import { deleteFromCloudinary } from '../middlewares/upload.js';
+import prisma from '../config/prisma.js';
+import { updateUserSchema } from '../validations/index.js';
+import { AppError } from '../middlewares/error.js';
+import logger from '../utils/logger.js';
 
 export const getAllUsersService = async () => {
-  return await prisma.user.findMany(
-    { select: { id: true, name: true, email: true, role: true, bio: true,createdAt: true }}
-  )
-}
+  logger.info('Fetching all users');
+  const users = await prisma.user.findMany({
+    select: { id: true, name: true, email: true, role: true, bio: true, createdAt: true },
+  });
+  logger.info(`Successfully fetched ${users.length} users`);
+  return users;
+};
 
 export const getUserService = async (reqId) => {
+  logger.info('Fetching user by ID', { userId: reqId });
+
   const user = await prisma.user.findUnique({
     where: { id: reqId },
     select: {
@@ -22,29 +29,32 @@ export const getUserService = async (reqId) => {
       linkedinUrl: true,
       createdAt: true,
       updatedAt: true,
-    }
-  })
+    },
+  });
 
   if (!user) {
-    const error = new Error('User not found')
-    error.statusCode = 404
-    throw error
+    logger.warn('User not found', { userId: reqId });
+    throw new AppError('User not found', 404);
   }
 
-  return user
-}
+  logger.info('Successfully fetched user', { userId: reqId, userName: user.name });
+  return user;
+};
 
 export const updateUserService = async (reqId, reqBody) => {
-  const validationResult = updateUserSchema.safeParse(reqBody)
+  logger.info('Updating user', { userId: reqId, fields: Object.keys(reqBody) });
+
+  const validationResult = updateUserSchema.safeParse(reqBody);
 
   if (!validationResult.success) {
-    const error = new Error('Validation failed')
-    error.statusCode = 400
-    error.details = validationResult.error
-    throw error
+    logger.warn('User update validation failed', {
+      userId: reqId,
+      errors: validationResult.error.errors,
+    });
+    throw new AppError('Validation failed', 400, validationResult.error.errors);
   }
 
-  const validatedData = validationResult.data
+  const validatedData = validationResult.data;
 
   const updatedUser = await prisma.user.update({
     where: { id: reqId },
@@ -59,35 +69,42 @@ export const updateUserService = async (reqId, reqBody) => {
       githubHandle: true,
       linkedinUrl: true,
       updatedAt: true,
-    }
-  })
+    },
+  });
 
-  return updatedUser
-}
+  logger.info('Successfully updated user', { userId: reqId, userName: updatedUser.name });
+  return updatedUser;
+};
 
 export const updateAvatarService = async (reqId, avatarUrl) => {
+  logger.info('Updating user avatar', { userId: reqId, avatarUrl });
+
   const user = await prisma.user.findUnique({
     where: { id: reqId },
-    select: { avatarUrl: true }
-  })
+    select: { avatarUrl: true },
+  });
 
   if (!user) {
-    const error = new Error('User not found')
-    error.statusCode = 404
-    throw error
+    logger.warn('User not found for avatar update', { userId: reqId });
+    throw new AppError('User not found', 404);
   }
 
   // delete the older profile picture if it exists in cloudinary
   if (user.avatarUrl) {
     try {
-      await deleteFromCloudinary(user.avatarUrl)
+      logger.info('Deleting old avatar from Cloudinary', { oldAvatar: user.avatarUrl });
+      await deleteFromCloudinary(user.avatarUrl);
+      logger.info('Successfully deleted old avatar');
     } catch (error) {
-      console.error('Failed to delete old avatar:', error.message)
+      logger.error('Failed to delete old avatar from Cloudinary', {
+        error: error.message,
+        avatarUrl: user.avatarUrl,
+      });
     }
   }
 
   const updatedUser = await prisma.user.update({
-    where: {id: reqId},
+    where: { id: reqId },
     data: { avatarUrl },
     select: {
       id: true,
@@ -99,14 +116,18 @@ export const updateAvatarService = async (reqId, avatarUrl) => {
       githubHandle: true,
       linkedinUrl: true,
       updatedAt: true,
-    }
-  })
+    },
+  });
 
-  return updatedUser
-}
+  logger.info('Successfully updated user avatar', { userId: reqId });
+  return updatedUser;
+};
 
 export const deleteUserService = async (reqId) => {
-  await prisma.user.delete({ where: { id: reqId } })
+  logger.info('Deleting user', { userId: reqId });
 
-  return { message: 'User deleted successfully' }
-}
+  await prisma.user.delete({ where: { id: reqId } });
+
+  logger.info('Successfully deleted user', { userId: reqId });
+  return { message: 'User deleted successfully' };
+};

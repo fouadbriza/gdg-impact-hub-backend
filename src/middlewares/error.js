@@ -1,72 +1,103 @@
-class AppError extends Error {
-  constructor(message, statusCode) {
+// src/middleware/errorHandler.js
+import logger from '../utils/logger.js';
+
+/**
+ * Custom error class
+ */
+export class AppError extends Error {
+  constructor(message, statusCode = 500, errors = null) {
     super(message);
     this.statusCode = statusCode;
-    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+    this.errors = errors;
     this.isOperational = true;
 
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
-export const errorHandler = (err, _req, res, _next) => {
-  // Default error response
+/**
+ * Handle Prisma errors
+ */
+const handlePrismaError = (error) => {
+  if (error.code === 'P2002') {
+    const field = error.meta?.target?.[0] || 'field';
+    return new AppError(`${field} already exists`, 409);
+  }
+
+  if (error.code === 'P2025') {
+    return new AppError('Record not found', 404);
+  }
+
+  if (error.code === 'P2003') {
+    return new AppError('Related record not found', 400);
+  }
+
+  if (error.code === 'P2014') {
+    return new AppError('Invalid ID provided', 400);
+  }
+
+  return new AppError('Database error occurred', 500);
+};
+
+/**
+ * Global error handler middleware
+ */
+// eslint-disable-next-line no-unused-vars
+const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // Log to console for development
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Error 💥', err);
+  // Log error with Winston
+  logger.error('API Error:', {
+    message: err.message,
+    statusCode: err.statusCode,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+  });
+
+  // Handle Prisma errors
+  if (err.code && err.code.startsWith('P')) {
+    error = handlePrismaError(err);
   }
 
-  // Handle Zod validation errors
-  if (err.name === 'ZodError') {
-    const message = err.errors.map(e => e.message).join('. ');
-    error = new AppError(`Invalid input data: ${message}`, 400);
+  // Handle validation errors
+  if (err.name === 'ValidationError') {
+    const errors = Object.values(err.errors).map((e) => ({
+      field: e.path,
+      message: e.message,
+    }));
+    error = new AppError('Validation failed', 400, errors);
   }
 
   // Handle JWT errors
   if (err.name === 'JsonWebTokenError') {
-    const message = 'Invalid token. Please log in again!';
-    error = new AppError(message, 401);
+    error = new AppError('Invalid token', 401);
   }
 
   if (err.name === 'TokenExpiredError') {
-    const message = 'Your token has expired! Please log in again.';
-    error = new AppError(message, 401);
-  }
-
-  // Handle Prisma errors
-  if (err.code === 'P2002') {
-    const message = 'Duplicate field value entered';
-    error = new AppError(message, 400);
-  }
-
-  if (err.code === 'P2025') {
-    const message = 'Record not found';
-    error = new AppError(message, 404);
-  }
-
-  // Handle Prisma validation errors
-  if (err instanceof Error && err.name.includes('PrismaClient')) {
-    const message = 'Database error occurred';
-    error = new AppError(message, 400);
+    error = new AppError('Token expired', 401);
   }
 
   // Send error response
   res.status(error.statusCode || 500).json({
-    status: error.status || 'error',
-    message: error.message || 'Something went wrong!',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    success: false,
+    error: {
+      message: error.message || 'Internal server error',
+      ...(error.errors && { errors: error.errors }),
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    },
   });
 };
 
-// 404 Not Found handler
-export const notFoundHandler = (req, res) => {
-  res.status(404).json({
-    status: 'fail',
-    message: `Can't find ${req.originalUrl} on this server!`
-  });
+/**
+ * Handle 404 errors
+ */
+const notFound = (req, res, next) => {
+  const error = new AppError(`Route not found - ${req.originalUrl}`, 404);
+  next(error);
 };
 
-export default errorHandler;
+export { errorHandler, notFound };
+export default { errorHandler, notFound };

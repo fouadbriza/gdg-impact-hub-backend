@@ -1,48 +1,37 @@
-import {
-  approveFeaturedProjectService,
-  deleteFeaturedProjectService,
-  getAllHighlightsService,
-} from '../services/highlight.service.js';
+import asyncHandler from '../utils/asyncHandler.js';
+import { sendSuccess } from '../utils/response.js';
+import * as highlightService from '../services/highlight.service.js';
 
-export const approveFeaturedProject = async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    const { reason, expiresAt } = req.body;
+/**
+ * @route   GET /api/v1/highlights
+ * @desc    Get all highlighted/featured projects
+ * @access  Public
+ */
+export const getAllHighlights = asyncHandler(async (req, res) => {
+  const highlights = await highlightService.getAllHighlightsService();
+  sendSuccess(res, highlights, 'Highlights retrieved successfully', highlights.length);
+});
 
-    if (!reason) {
-      res.status(400).json({ message: 'Reason is required' });
-    }
+/**
+ * @route   POST /api/v1/highlights/projects/:projectId
+ * @desc    Feature a project
+ * @access  Private/Admin
+ */
+export const featureProject = asyncHandler(async (req, res) => {
+  const highlight = await highlightService.featureProjectService(
+    req.params.projectId,
+    req.body,
+    req.user.id
+  );
+  sendSuccess(res, highlight, 'Project featured successfully', undefined, 201);
+});
 
-    const highlight = await approveFeaturedProjectService(
-      projectId,
-      reason,
-      req.user.userId,
-      expiresAt
-    );
-
-    res.status(201).json({ message: 'Project successfully featured', highlight });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to feature project', details: error.message });
-  }
-};
-
-export const deleteFeaturedProject = async (req, res) => {
-  try {
-    const { projectId } = req.params;
-
-    await deleteFeaturedProjectService(projectId);
-
-    res.status(200).json({ message: 'Highlight removed and project un-featured' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to remove highlight', details: error.message });
-  }
-};
-
-export const getHighlights = async (req, res) => {
-  try {
-    const highlights = await getAllHighlightsService();
-    res.status(200).json({ highlights });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to load highlights', details: error.message });
-  }
-};
+/**
+ * @route   DELETE /api/v1/highlights/projects/:projectId
+ * @desc    Unfeature a project
+ * @access  Private/Admin
+ */
+export const unfeatureProject = asyncHandler(async (req, res) => {
+  const result = await highlightService.unfeatureProjectService(req.params.projectId);
+  sendSuccess(res, result, 'Project unfeatured successfully');
+});
