@@ -15,13 +15,13 @@ export const approveMentorService = async (id) => {
   })
 
   const existing = await prisma.mentorshipProfile.findUnique({
-    where: { id }
+    where: { userId: id }
   })
 
   if (!existing) {
     await prisma.mentorshipProfile.create({
       data: {
-        id,
+        userId: id,
         bio: `Mentor profile for ${user.name}`,
         skills: [],
         availability: true,
@@ -31,7 +31,7 @@ export const approveMentorService = async (id) => {
   } else {
     // ensures the availability of the mentor
     await prisma.mentorshipProfile.update({
-      where: { id },
+      where: { userId: id },
       data: { availability: true }
     })
   }

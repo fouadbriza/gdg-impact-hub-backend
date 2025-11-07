@@ -1,5 +1,9 @@
-import { archiveProjectService, setProjectStatusService, setUserRoleService } from "../services/admin.service.js"
-
+import {
+  archiveProjectService,
+  setProjectStatusService,
+  setUserRoleService,
+  approveMentorService
+} from "../services/admin.service.js"
 
 // User Management
 
@@ -38,7 +42,8 @@ export const setProjectStatus = async (req, res) => {
     
     const project = await setProjectStatusService(id, status)
 
-    res.status(200).json(project)
+    res.status(200).json({ message: "Status updated", project })
+
   } catch (error) {
     res.status(500).json({ error: "Failed to set project's status", details: error.message })
   }
