@@ -28,4 +28,11 @@ router.post('/login', validate(loginSchema), authController.login);
  */
 router.get('/me', authenticate, authController.getMe);
 
+/**
+ * @route   GET /api/v1/auth/logout
+ * @desc    Logs out the authenticated user
+ * @access  Private
+ */
+router.get('/logout', authenticate, authController.logout);
+
 export default router;

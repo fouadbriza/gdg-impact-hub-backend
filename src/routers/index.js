@@ -6,6 +6,8 @@ import mentorshipRoutes from './mentorship.routes.js';
 import announcementRouter from './announcement.router.js';
 import votesRouter from './votes.router.js';
 import highlightRouter from './highlight.router.js';
+import oauthRoutes from "./oauth.routes.js";
+import passwordordRoutes from "./password.routes.js";
 
 const router = express.Router();
 
@@ -17,5 +19,7 @@ router.use('/mentorship', mentorshipRoutes);
 router.use('/announcements', announcementRouter);
 router.use('/votes', votesRouter);
 router.use('/highlights', highlightRouter);
+router.use("/oauth", oauthRoutes);
+router.use("/password", passwordordRoutes);
 
 export default router;
