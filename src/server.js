@@ -13,6 +13,8 @@ import { errorHandler } from './middlewares/error.js';
 import authenticateJWT from './middlewares/authenticateJWT.js';
 import isAdmin from "./middlewares/isAdmin.js" //is admin middlware
 import projectsRoute from './routers/projects.js'
+import announcementsRoute from './routers/anouncements.js'
+
 // Load environment variables
 dotenv.config();
 
@@ -204,8 +206,10 @@ app.get('/api/v1/profile', authenticateJWT, (req, res) => {
   res.json({ user: req.user });
 });
 
-app.use('/projects',projectsRoute)
 
+//routes
+app.use('/projects',projectsRoute);
+app.use('announcements',announcementsRoute);
 
 // Error handling middleware
 app.use(errorHandler);
