@@ -2,60 +2,44 @@ import {
   archiveProjectService,
   setProjectStatusService,
   setUserRoleService,
-  approveMentorService
-} from "../services/admin.service.js"
+  approveMentorService,
+} from '../services/admin.service.js';
+import asyncHandler from '../utils/asyncHandler.js';
 
 // User Management
 
 // PUT /users/:id/role
-export const setUserRole = async (req, res) => {
-  try {
-    const { id } = req.params
-    const { role } = req.body
+export const setUserRole = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
 
-    const user = await setUserRoleService(id, role)
+  const user = await setUserRoleService(id, role);
 
-    res.status(200).json({ message: 'User status updated', user })
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to promote user', details: error.message })
-  }
-}
+  res.status(200).json({ message: 'User status updated', user });
+});
 
 // POST /users/:id/approve-mentor
-export const approveMentor = async (req, res) => {
-  try {
-    const { id } = req.params
-    const user = await approveMentorService(id)
-    return res.status(200).json({ message: "User promoted to MENTOR and profile ensured", user })
-  } catch (error) {
-    return res.status(500).json({ error: error.message })
-  }
-}
+export const approveMentor = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const user = await approveMentorService(id);
+  return res.status(200).json({ message: 'User promoted to MENTOR and profile ensured', user });
+});
 
 // Project Management
 
 // PUT /projects/:id/status
-export const setProjectStatus = async (req, res) => {
-  try {
-    const { id } = req.params
-    const { status } = req.body
-    
-    const project = await setProjectStatusService(id, status)
+export const setProjectStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
 
-    res.status(200).json({ message: "Status updated", project })
+  const project = await setProjectStatusService(id, status);
 
-  } catch (error) {
-    res.status(500).json({ error: "Failed to set project's status", details: error.message })
-  }
-}
+  res.status(200).json({ message: 'Status updated', project });
+});
 
 // POST /projects/:id/archive
-export const archiveProject = async (req, res) => {
-  try {
-    const { id } = req.params
-    const project = await archiveProjectService(id)
-    return res.status(200).json({ message: "Project archived", project })
-  } catch (error) {
-    return res.status(500).json({ error: error.message })
-  }
-}
+export const archiveProject = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const project = await archiveProjectService(id);
+  return res.status(200).json({ message: 'Project archived', project });
+});
