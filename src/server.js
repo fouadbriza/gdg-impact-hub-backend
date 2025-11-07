@@ -208,8 +208,8 @@ app.get('/api/v1/profile', authenticateJWT, (req, res) => {
 
 
 //routes
-app.use('/projects',projectsRoute);
-app.use('announcements',announcementsRoute);
+app.use('/api/projects',projectsRoute);
+app.use('/announcements',announcementsRoute);
 
 // Error handling middleware
 app.use(errorHandler);
