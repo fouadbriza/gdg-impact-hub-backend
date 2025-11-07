@@ -474,3 +474,4 @@ enum NotificationType {
 
   @@map("notification_type")
 }
+
