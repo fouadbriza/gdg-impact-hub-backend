@@ -8,6 +8,7 @@ export const addProjectService = async (title,description,category,impactArea,me
   if (category !== undefined) data.category = category;
   if (impactArea !== undefined) data.impactArea = impactArea;
   if (mentorId !== undefined) data.mentorId = mentorId;
+  data.status ="PENDING"
   
     const newProject = await prisma.project.create({
     data: data
@@ -50,11 +51,11 @@ export const editProjectService = async (id,title,description,category,impactAre
 };
 
 //
-export const searchProjectsService = async (name,category,impactArea,mentorId) => {
+export const searchProjectsService = async (title,category,impactArea,mentorId) => {
   const projects = await prisma.project.findMany({
     where: {
-      ...(name && {
-        title: { contains: name, mode: "insensitive" },
+      ...(title && {
+        title: { contains: title, mode: "insensitive" },
       }),
       ...(category && { category }),
       ...(impactArea && { impactArea }),
@@ -64,3 +65,24 @@ export const searchProjectsService = async (name,category,impactArea,mentorId) =
   });
   return projects;
 };
+
+export const approveProjectService = async (id) => {
+    const updated = await prisma.project.update({
+      where: { id },
+      data: {
+        status: "APPROVED",
+      },
+    });
+    return(updated);
+}
+
+
+export const denyProjectService = async (id) => {
+    const updated = await prisma.project.update({
+      where: { id },
+      data: {
+        status: "DENIED",
+      },
+    });
+    return(updated);
+}

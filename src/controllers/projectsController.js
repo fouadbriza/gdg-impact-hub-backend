@@ -1,4 +1,4 @@
-import {readProjectService,searchProjectsService,editProjectService,addProjectService,deleteProjectService} from "../services/projectService.js";
+import {readProjectService,searchProjectsService,editProjectService,addProjectService,deleteProjectService, acceptProjectService,approveProjectService,denyProjectService} from "../services/projectService.js";
 
 export const addProject = async (req, res) => {
 const { title, description, category, impactArea, mentorId } = req.body;
@@ -45,9 +45,34 @@ export const editProject = async (req, res) => {
 
 //
 export const searchProjects = async (req,res) => {
-  const { name, category, impactArea, mentorId } = req.query;
+  const { title, category, impactArea, mentorId } = req.query;
     try {
-  const projects = await searchProjectsService(name, category, impactArea, mentorId);
+  const projects = await searchProjectsService(title, category, impactArea, mentorId);
   res.status(200).json(projects);
     } catch (err) { res.status(500).json({ error: "Failed to search projects"}); }
 };
+
+
+export const approveProject = async (req,res) => {
+try {
+  const id = req.params.id;
+  const updated = await approveProjectService(id)
+    res.status(200).json({ message: "Project approved", project: updated });
+
+
+}catch(error) {
+     res.status(500).json({ error: "Failed to approve project", details: error.message });
+}}
+
+
+
+export const denyProject = async (req,res) => {
+try {
+  const id = req.params.id;
+  const updated = await denyProjectService(id)
+    res.status(200).json({ message: "Project denied", project: updated });
+
+
+}catch(error) {
+     res.status(500).json({ error: "Failed to deny project", details: error.message });
+}}

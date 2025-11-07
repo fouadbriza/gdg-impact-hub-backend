@@ -10,15 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Project {
-  id              Int     @id @default(autoincrement())
-  name            String  @unique
-  description     String
-  category        String
-  mentor          String
-  numberOfMembers Int
-  impactArea      String
-}
 
 model Announcement {
   id           Int      @id @default(autoincrement())
@@ -85,7 +76,7 @@ model Project {
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   archivedAt    DateTime?      @map("archived_at")
-
+  mentorId      String
   // Relations
   owner                 User                    @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   team                  Team?                   @relation(fields: [teamId], references: [id])

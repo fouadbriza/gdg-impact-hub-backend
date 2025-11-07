@@ -10,9 +10,11 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as GitHubStrategy } from 'passport-github2';
 import jwt from 'jsonwebtoken';
 import { errorHandler } from './middlewares/error.js';
-
+import authenticateJWT from './middlewares/authenticateJWT.js';
+import isAdmin from "./middlewares/isAdmin.js" //is admin middlware
 // Load environment variables
 dotenv.config();
+
 
 // Environment variables with defaults
 const env = {
@@ -147,24 +149,7 @@ passport.use(new GitHubStrategy(
 ));
 
 // JWT authentication middleware
-const authenticateJWT = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  
-  if (authHeader) {
-    const token = authHeader.split(' ')[1];
-    
-    jwt.verify(token, env.JWT_SECRET, (err, user) => {
-      if (err) {
-        return res.sendStatus(403);
-      }
-      
-      req.user = user;
-      next();
-    });
-  } else {
-    res.sendStatus(401);
-  }
-};
+   //i moved it to ./middelwares
 
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {
