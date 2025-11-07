@@ -1,13 +1,11 @@
-import { PrismaClient } from "@prisma/client";
-import { hashPassword} from "../utils/hash.js";
-import { generateResetToken } from "../utils/token.js";
-import { sendResetEmail } from "../services/emailService.js";
-import crypto from "crypto";
-
+import { PrismaClient } from '@prisma/client';
+import { hashPassword } from '../utils/hash.js';
+import { generateResetToken } from '../utils/token.js';
+import { sendResetEmail } from '../services/email.service.js';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 const RESET_TOKEN_EXPIRATION_MS = 15 * 60 * 1000; // 15 minutes
-
 
 export async function forgotPassword(req, res) {
   const { email } = req.body;
@@ -44,16 +42,16 @@ export async function forgotPassword(req, res) {
     });
     console.error('SendGrid error:', err);
     if (err.response) {
-    console.error("Body:", err.response.body); 
-  }
-    return res.status(500).json({ error: "Unable to send email. Please try again later." });
+      console.error('Body:', err.response.body);
+    }
+    return res.status(500).json({ error: 'Unable to send email. Please try again later.' });
   }
 }
 
-
 export async function resetPassword(req, res) {
   const { token, email, newPassword } = req.body;
-  if (!token || !email || !newPassword) return res.status(400).json({ error: 'token, email and newPassword required.' });
+  if (!token || !email || !newPassword)
+    return res.status(400).json({ error: 'token, email and newPassword required.' });
 
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 

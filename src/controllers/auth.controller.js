@@ -1,50 +1,14 @@
 // src/controllers/auth.controller.js
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import prisma from '../config/prisma.js';
-import { AppError } from '../middlewares/error.js';
+import {
+  registerUserService,
+  loginUserService,
+  getCurrentUserService,
+} from '../services/auth.service.js';
 
 class AuthController {
   async register(req, res, next) {
     try {
-      const { name, email, password, role = 'MEMBER' } = req.body;
-
-      // Check if user already exists
-      const existingUser = await prisma.user.findUnique({
-        where: { email },
-      });
-
-      if (existingUser) {
-        throw new AppError('User already exists', 400);
-      }
-
-      // Hash password with debug logging
-      console.log('Original password:', password);
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-      console.log('Hashed password:', hashedPassword);
-
-      // Create user with password hash
-      const user = await prisma.user.create({
-        data: {
-          name,
-          email,
-          passwordHash: hashedPassword,
-          role,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-      });
-
-      // Generate JWT
-      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your-secret-key', {
-        expiresIn: '7d',
-      });
+      const { user, token } = await registerUserService(req.body);
 
       res.status(201).json({
         success: true,
@@ -58,53 +22,12 @@ class AuthController {
 
   async login(req, res, next) {
     try {
-      const { email, password } = req.body;
-      console.log('Login attempt for email:', email);
-      console.log('Provided password:', password);
-
-      // Find user with password hash
-      const user = await prisma.user.findUnique({
-        where: { email },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          passwordHash: true,
-          role: true,
-        },
-      });
-
-      console.log('Found user:', user ? 'Yes' : 'No');
-      if (user) {
-        console.log('Stored hash:', user.passwordHash);
-      }
-
-      if (!user || !user.passwordHash) {
-        console.log('User not found or missing password hash');
-        throw new AppError('Invalid credentials', 401);
-      }
-
-      // Check password
-      console.log('Comparing password with hash...');
-      const isMatch = await bcrypt.compare(password, user.passwordHash);
-      console.log('Password match:', isMatch);
-      if (!isMatch) {
-        throw new AppError('Invalid credentials', 401);
-      }
-
-      // Generate JWT
-      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your-secret-key', {
-        expiresIn: '7d',
-      });
-
-      // Remove password from user object
-      // eslint-disable-next-line no-unused-vars
-      const { password: _password, ...userWithoutPassword } = user;
+      const { user, token } = await loginUserService(req.body);
 
       res.json({
         success: true,
         token,
-        user: userWithoutPassword,
+        user,
       });
     } catch (error) {
       next(error);
@@ -113,20 +36,7 @@ class AuthController {
 
   async getMe(req, res, next) {
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-      });
-
-      if (!user) {
-        throw new AppError('User not found', 404);
-      }
+      const user = await getCurrentUserService(req.user.id);
 
       res.json({
         success: true,
@@ -138,9 +48,9 @@ class AuthController {
   }
 
   logout(req, res) {
-  res.cookie("token", "", { httpOnly: true, expires: new Date(0) });
-  res.json({ message: "Logged out successfully" });
-}
+    res.cookie('token', '', { httpOnly: true, expires: new Date(0) });
+    res.json({ message: 'Logged out successfully' });
+  }
 }
 
 export default new AuthController();

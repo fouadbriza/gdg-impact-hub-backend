@@ -1,6 +1,6 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/response.js';
-import * as projectService from '../services/projectService.js';
+import * as projectService from '../services/project.service.js';
 
 /**
  * @route   GET /api/v1/projects
