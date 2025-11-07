@@ -86,3 +86,25 @@ export const denyProjectService = async (id) => {
     });
     return(updated);
 }
+
+export const addMemberService = async (userid,projectid,role) => {
+  const record = await prisma.teamMember.create({
+  data: {
+    userId: userid,
+    projectId: projectid,
+    role: role,
+  },
+});
+return record
+
+}
+
+
+export const removeMemberService = async (teamMemberId) => {
+  const record = await prisma.teamMember.delete({
+  where: { id: teamMemberId },
+});
+
+return record 
+
+}

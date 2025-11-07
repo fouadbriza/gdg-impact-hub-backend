@@ -1,4 +1,4 @@
-import {readProjectService,searchProjectsService,editProjectService,addProjectService,deleteProjectService, acceptProjectService,approveProjectService,denyProjectService} from "../services/projectService.js";
+import {readProjectService,searchProjectsService,editProjectService,addProjectService,deleteProjectService, acceptProjectService,approveProjectService,denyProjectService,addMemberService,removeMemberService} from "../services/projectService.js";
 
 export const addProject = async (req, res) => {
 const { title, description, category, impactArea, mentorId } = req.body;
@@ -76,3 +76,26 @@ try {
 }catch(error) {
      res.status(500).json({ error: "Failed to deny project", details: error.message });
 }}
+
+
+
+export const addMember = async (req,res) => {
+  try {
+const {userId, projectid,role} = req.body
+  const record = await addMemberService(userId,projectid,role)
+  res.status(200).json({message: "member added", record} ) 
+  } catch(error) {
+    res.status(500).json({message: "failed to add member"})
+  }
+}
+
+export const removeMember = async (req,res) => {
+try {
+const {teamMemberId} = req.body
+  const record = await removeMemberService(teamMemberId)
+  res.status(200).json({message: "member removed from project", record} ) 
+  } catch(error) {
+    res.status(500).json({message: "failed to remove member from project"})
+  }
+  
+}

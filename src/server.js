@@ -12,6 +12,7 @@ import jwt from 'jsonwebtoken';
 import { errorHandler } from './middlewares/error.js';
 import authenticateJWT from './middlewares/authenticateJWT.js';
 import isAdmin from "./middlewares/isAdmin.js" //is admin middlware
+import projectsRoute from './routers/projects.js'
 // Load environment variables
 dotenv.config();
 
@@ -202,6 +203,9 @@ app.get('/api/v1/auth/github/callback',
 app.get('/api/v1/profile', authenticateJWT, (req, res) => {
   res.json({ user: req.user });
 });
+
+app.use('/projects',projectsRoute)
+
 
 // Error handling middleware
 app.use(errorHandler);
