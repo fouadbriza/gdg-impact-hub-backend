@@ -11,9 +11,14 @@ import { Strategy as GitHubStrategy } from 'passport-github2';
 import jwt from 'jsonwebtoken';
 import { errorHandler } from './middlewares/error.js';
 import router from "./routers/router.js";
+import authenticateJWT from './middlewares/authenticateJWT.js';
+import isAdmin from "./middlewares/isAdmin.js" //is admin middlware
+import projectsRoute from './routers/projects.js'
+import announcementsRoute from './routers/anouncements.js'
 
 // Load environment variables
 dotenv.config();
+
 
 // Environment variables with defaults
 const env = {
@@ -147,24 +152,7 @@ passport.use(new GitHubStrategy(
 ));
 
 // JWT authentication middleware
-const authenticateJWT = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  
-  if (authHeader) {
-    const token = authHeader.split(' ')[1];
-    
-    jwt.verify(token, env.JWT_SECRET, (err, user) => {
-      if (err) {
-        return res.sendStatus(403);
-      }
-      
-      req.user = user;
-      next();
-    });
-  } else {
-    res.sendStatus(401);
-  }
-};
+   //i moved it to ./middelwares
 
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {
@@ -217,6 +205,11 @@ app.get('/api/v1/auth/github/callback',
 app.get('/api/v1/profile', authenticateJWT, (req, res) => {
   res.json({ user: req.user });
 });
+
+
+//routes
+app.use('/api/projects',projectsRoute);
+app.use('/announcements',announcementsRoute);
 
 // Error handling middleware
 app.use(errorHandler);
