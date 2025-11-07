@@ -1,14 +1,16 @@
 // src/routers/mentorship.routes.js
 import express from 'express';
-import { authenticate, authorize } from '../middleware/auth.js';
-import { validateRequest } from '../middleware/validation.js';
-import { 
-  createSessionSchema, 
-  updateSessionSchema, 
-  feedbackSchema, 
+import { authenticate, authorize } from '../middlewares/auth.js';
+import { validate } from '../middlewares/validate.js';
+import {
+  createSessionSchema,
+  updateSessionSchema,
+  feedbackSchema,
   evaluationSchema,
-  mentorProfileSchema 
-} from '../utils/validationSchemas.js';
+  mentorProfileSchema,
+  createMentorshipRequestSchema,
+  declineRequestSchema,
+} from '../validations/index.js';
 import mentorshipController from '../controllers/mentorship.controller.js';
 
 const router = express.Router();
@@ -26,12 +28,7 @@ const router = express.Router();
 router.post(
   '/requests',
   authenticate,
-  validateRequest({
-    body: {
-      projectId: 'string|required',
-      message: 'string|required|min:10|max:1000'
-    }
-  }),
+  validate(createMentorshipRequestSchema),
   mentorshipController.createMentorshipRequest
 );
 
@@ -54,14 +51,16 @@ router.get(
  * @desc    Accept a mentorship request
  * @access  Private (Mentor only)
  */
-router.put('/requests/:requestId/accept',
+router.put(
+  '/requests/:requestId/accept',
   authenticate,
   authorize(['MENTOR', 'ADMIN']),
   mentorshipController.acceptRequest
 );
 
 // Alias for PATCH method
-router.patch('/requests/:requestId/accept',
+router.patch(
+  '/requests/:requestId/accept',
   authenticate,
   authorize(['MENTOR', 'ADMIN']),
   mentorshipController.acceptRequest
@@ -77,6 +76,7 @@ router.put(
   '/requests/:requestId/decline',
   authenticate,
   authorize(['MENTOR', 'ADMIN']),
+  validate(declineRequestSchema),
   mentorshipController.declineRequest
 );
 
@@ -106,7 +106,7 @@ router.post(
   '/sessions',
   authenticate,
   authorize(['MENTOR', 'ADMIN']),
-  validateRequest(createSessionSchema),
+  validate(createSessionSchema),
   mentorshipController.createSession
 );
 
@@ -116,22 +116,14 @@ router.post(
  * @access  Private
  * @query   projectId, mentorshipRequestId, upcoming
  */
-router.get(
-  '/sessions',
-  authenticate,
-  mentorshipController.getSessions
-);
+router.get('/sessions', authenticate, mentorshipController.getSessions);
 
 /**
  * @route   GET /api/mentorship/sessions/:sessionId
  * @desc    Get a specific session by ID
  * @access  Private
  */
-router.get(
-  '/sessions/:sessionId',
-  authenticate,
-  mentorshipController.getSessionById
-);
+router.get('/sessions/:sessionId', authenticate, mentorshipController.getSessionById);
 
 /**
  * @route   PUT /api/mentorship/sessions/:sessionId
@@ -142,7 +134,7 @@ router.put(
   '/sessions/:sessionId',
   authenticate,
   authorize(['MENTOR', 'ADMIN']),
-  validateRequest(updateSessionSchema),
+  validate(updateSessionSchema),
   mentorshipController.updateSession
 );
 
@@ -151,11 +143,7 @@ router.put(
  * @desc    Join a mentorship session
  * @access  Private
  */
-router.post(
-  '/sessions/:sessionId/join',
-  authenticate,
-  mentorshipController.joinSession
-);
+router.post('/sessions/:sessionId/join', authenticate, mentorshipController.joinSession);
 
 /**
  * @route   DELETE /api/mentorship/sessions/:sessionId
@@ -183,7 +171,7 @@ router.post(
   '/sessions/:sessionId/feedback',
   authenticate,
   authorize(['MENTOR', 'ADMIN']),
-  validateRequest(feedbackSchema),
+  validate(feedbackSchema),
   mentorshipController.submitSessionFeedback
 );
 
@@ -192,11 +180,7 @@ router.post(
  * @desc    Get feedback for a session
  * @access  Private
  */
-router.get(
-  '/sessions/:sessionId/feedback',
-  authenticate,
-  mentorshipController.getSessionFeedback
-);
+router.get('/sessions/:sessionId/feedback', authenticate, mentorshipController.getSessionFeedback);
 
 /**
  * @route   POST /api/mentorship/projects/:projectId/evaluation
@@ -208,7 +192,7 @@ router.post(
   '/projects/:projectId/evaluation',
   authenticate,
   authorize(['MENTOR', 'ADMIN']),
-  validateRequest(evaluationSchema),
+  validate(evaluationSchema),
   mentorshipController.submitProjectEvaluation
 );
 
@@ -226,31 +210,6 @@ router.get(
 // ============================================
 // MENTOR PROFILE ROUTES
 // ============================================
-
-/**
- * @route   GET /api/mentorship/profile
- * @desc    Get mentor profile
- * @access  Private
- */
-router.get(
-  '/profile',
-  authenticate,
-  mentorshipController.getMentorProfile
-);
-
-/**
- * @route   PUT /api/mentorship/profile
- * @desc    Update mentor profile
- * @access  Private (Mentor only)
- * @body    bio, skills, availability, hourlyCapacity
- */
-router.put(
-  '/profile',
-  authenticate,
-  authorize(['MENTOR', 'ADMIN']),
-  validateRequest(mentorProfileSchema),
-  mentorshipController.updateMentorProfile
-);
 
 // ============================================
 // MENTOR PROFILE ROUTES
@@ -278,7 +237,7 @@ router.put(
   '/profile',
   authenticate,
   authorize(['MENTOR', 'ADMIN']),
-  validateRequest(mentorProfileSchema),
+  validate(mentorProfileSchema),
   mentorshipController.updateMentorProfile
 );
 

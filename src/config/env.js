@@ -17,7 +17,7 @@ const env = {
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
   SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
-  EMAIL_FROM: process.env.EMAIL_FROM
+  EMAIL_FROM: process.env.EMAIL_FROM,
 };
 
 // Validate required environment variables
@@ -32,10 +32,10 @@ const requiredEnvVars = [
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
   'SENDGRID_API_KEY',
-  'EMAIL_FROM'
+  'EMAIL_FROM',
 ];
 
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
 if (missingVars.length > 0) {
   console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
   process.exit(1);

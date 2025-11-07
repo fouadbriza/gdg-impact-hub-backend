@@ -10,6 +10,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
+model Announcement {
+  id           Int      @id @default(autoincrement())
+  title        String
+  content      String
+  creationDate DateTime @default(now())
+}
+
 // ============================================
 // USERS & AUTHENTICATION
 // ============================================
@@ -68,7 +76,7 @@ model Project {
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   archivedAt    DateTime?      @map("archived_at")
-
+  mentorId      String
   // Relations
   owner                 User                    @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   team                  Team?                   @relation(fields: [teamId], references: [id])
@@ -466,3 +474,4 @@ enum NotificationType {
 
   @@map("notification_type")
 }
+

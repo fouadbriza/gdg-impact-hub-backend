@@ -1,20 +1,42 @@
 // src/server.js
-import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { errorHandler, notFound } from './middleware/errorHandler.js';
-import prisma from './prisma.js';
+import { v2 as cloudinary } from 'cloudinary';
+import sgMail from '@sendgrid/mail';
 
-// Import routes
-import mentorshipRoutes from './routers/mentorship.routes.js';
-import authRoutes from './routers/auth.routes.js';
+// Config imports
+import env from './config/env.js';
+import prisma from './config/prisma.js';
+import passport from './config/passport.js';
 
-dotenv.config();
+// Middleware imports
+import { errorHandler, notFound } from './middlewares/error.js';
+import { apiLimiter } from './middlewares/rateLimiter.js';
+
+// Utility imports
+import logger, { stream } from './utils/logger.js';
+
+// Route imports
+import routes from './routers/index.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT || 3000;
+
+// ============================================
+// THIRD-PARTY CONFIGURATION
+// ============================================
+
+// Configure SendGrid
+sgMail.setApiKey(env.SENDGRID_API_KEY);
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
+});
 
 // ============================================
 // MIDDLEWARE
@@ -24,42 +46,42 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: env.NODE_ENV === 'production' ? process.env.CORS_ORIGIN : '*',
+    credentials: true,
+  })
+);
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-} else {
-  app.use(morgan('combined'));
-}
+// Logging with Winston stream
+app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined', { stream }));
+
+// Rate limiting
+app.use('/api', apiLimiter);
+
+// Passport initialization
+app.use(passport.initialize());
 
 // ============================================
 // ROUTES
 // ============================================
 
-// Health check
-app.get('/health', (req, res) => {
+// Health check endpoint
+app.get('/health', (_req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Server is running',
-    timestamp: new Date().toISOString()
+    status: 'ok',
+    environment: env.NODE_ENV,
+    timestamp: new Date().toISOString(),
   });
 });
 
-// API routes
-app.use('/api/mentorship', mentorshipRoutes);
-app.use('/api/auth', authRoutes);
-
-// Add other routes here as needed
-// app.use('/api/projects', projectRoutes);
-// app.use('/api/users', userRoutes);
+// API routes - all under /api/v1
+app.use('/api/v1', routes);
 
 // ============================================
 // ERROR HANDLING
@@ -79,29 +101,29 @@ const startServer = async () => {
   try {
     // Test database connection
     await prisma.$connect();
-    console.log('✅ Database connected successfully');
+    logger.info('✅ Database connected successfully');
 
     // Start server
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      logger.info(`🚀 Server running on port ${PORT}`);
+      logger.info(`📍 Environment: ${env.NODE_ENV}`);
+      logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error('❌ Failed to start server:', { error: error.message });
     process.exit(1);
   }
 };
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
+  logger.info('\n🛑 Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
+  logger.info('\n🛑 Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });

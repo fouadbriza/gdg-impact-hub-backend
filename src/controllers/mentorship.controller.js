@@ -1,6 +1,6 @@
 // src/controllers/mentorship.controller.js
-import prisma from '../prisma.js';
-import { AppError } from '../middleware/errorHandler.js';
+import prisma from '../config/prisma.js';
+import { AppError } from '../middlewares/error.js';
 import mentorshipService from '../services/mentorship.service.js';
 
 class MentorshipController {
@@ -21,11 +21,11 @@ class MentorshipController {
       const mentor = await prisma.user.findFirst({
         where: {
           role: 'MENTOR',
-          mentorshipProfile: { isNot: null }
+          mentorshipProfile: { isNot: null },
         },
-        include: { 
-          mentorshipProfile: true 
-        }
+        include: {
+          mentorshipProfile: true,
+        },
       });
 
       if (!mentor) {
@@ -38,7 +38,7 @@ class MentorshipController {
           requester: { connect: { id: userId } },
           mentorProfile: { connect: { id: mentor.mentorshipProfile.id } },
           message,
-          status: 'PENDING'
+          status: 'PENDING',
         },
         include: {
           project: true,
@@ -46,8 +46,8 @@ class MentorshipController {
             select: {
               id: true,
               name: true,
-              email: true
-            }
+              email: true,
+            },
           },
           mentorProfile: {
             include: {
@@ -55,18 +55,18 @@ class MentorshipController {
                 select: {
                   id: true,
                   name: true,
-                  email: true
-                }
-              }
-            }
-          }
-        }
+                  email: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       res.status(201).json({
         success: true,
         message: 'Mentorship request created successfully',
-        data: request
+        data: request,
       });
     } catch (error) {
       next(error);
@@ -83,10 +83,10 @@ class MentorshipController {
       const { status } = req.query;
 
       const requests = await mentorshipService.getMentorRequests(mentorId, status);
-      
+
       res.status(200).json({
         success: true,
-        data: requests
+        data: requests,
       });
     } catch (error) {
       next(error);
@@ -103,11 +103,11 @@ class MentorshipController {
       const mentorId = req.user.id;
 
       const request = await mentorshipService.acceptRequest(requestId, mentorId);
-      
+
       res.status(200).json({
         success: true,
         message: 'Mentorship request accepted successfully',
-        data: request
+        data: request,
       });
     } catch (error) {
       next(error);
@@ -125,11 +125,11 @@ class MentorshipController {
       const { reason } = req.body;
 
       const request = await mentorshipService.declineRequest(requestId, mentorId, reason);
-      
+
       res.status(200).json({
         success: true,
         message: 'Mentorship request declined',
-        data: request
+        data: request,
       });
     } catch (error) {
       next(error);
@@ -145,10 +145,10 @@ class MentorshipController {
       const mentorId = req.user.id;
 
       const projects = await mentorshipService.getAssignedProjects(mentorId);
-      
+
       res.status(200).json({
         success: true,
-        data: projects
+        data: projects,
       });
     } catch (error) {
       next(error);
@@ -170,13 +170,13 @@ class MentorshipController {
 
       const session = await mentorshipService.createSession({
         ...sessionData,
-        mentorId
+        mentorId,
       });
-      
+
       res.status(201).json({
         success: true,
         message: 'Mentorship session created successfully',
-        data: session
+        data: session,
       });
     } catch (error) {
       next(error);
@@ -196,12 +196,12 @@ class MentorshipController {
         userId,
         projectId,
         mentorshipRequestId,
-        upcoming: upcoming === 'true'
+        upcoming: upcoming === 'true',
       });
-      
+
       res.status(200).json({
         success: true,
-        data: sessions
+        data: sessions,
       });
     } catch (error) {
       next(error);
@@ -218,10 +218,10 @@ class MentorshipController {
       const userId = req.user.id;
 
       const session = await mentorshipService.getSessionById(sessionId, userId);
-      
+
       res.status(200).json({
         success: true,
-        data: session
+        data: session,
       });
     } catch (error) {
       next(error);
@@ -239,11 +239,11 @@ class MentorshipController {
       const updateData = req.body;
 
       const session = await mentorshipService.updateSession(sessionId, mentorId, updateData);
-      
+
       res.status(200).json({
         success: true,
         message: 'Session updated successfully',
-        data: session
+        data: session,
       });
     } catch (error) {
       next(error);
@@ -260,11 +260,11 @@ class MentorshipController {
       const userId = req.user.id;
 
       const session = await mentorshipService.joinSession(sessionId, userId);
-      
+
       res.status(200).json({
         success: true,
         message: 'Successfully joined the session',
-        data: session
+        data: session,
       });
     } catch (error) {
       next(error);
@@ -281,10 +281,10 @@ class MentorshipController {
       const mentorId = req.user.id;
 
       await mentorshipService.deleteSession(sessionId, mentorId);
-      
+
       res.status(200).json({
         success: true,
-        message: 'Session deleted successfully'
+        message: 'Session deleted successfully',
       });
     } catch (error) {
       next(error);
@@ -310,11 +310,11 @@ class MentorshipController {
         mentorId,
         feedbackData
       );
-      
+
       res.status(201).json({
         success: true,
         message: 'Feedback submitted successfully',
-        data: feedback
+        data: feedback,
       });
     } catch (error) {
       next(error);
@@ -336,11 +336,11 @@ class MentorshipController {
         mentorId,
         evaluationData
       );
-      
+
       res.status(201).json({
         success: true,
         message: 'Project evaluation submitted successfully',
-        data: evaluation
+        data: evaluation,
       });
     } catch (error) {
       next(error);
@@ -356,10 +356,10 @@ class MentorshipController {
       const { projectId } = req.params;
 
       const evaluations = await mentorshipService.getProjectEvaluations(projectId);
-      
+
       res.status(200).json({
         success: true,
-        data: evaluations
+        data: evaluations,
       });
     } catch (error) {
       next(error);
@@ -375,10 +375,10 @@ class MentorshipController {
       const { sessionId } = req.params;
 
       const feedback = await mentorshipService.getSessionFeedback(sessionId);
-      
+
       res.status(200).json({
         success: true,
-        data: feedback
+        data: feedback,
       });
     } catch (error) {
       next(error);
@@ -395,11 +395,11 @@ class MentorshipController {
       const profileData = req.body;
 
       const profile = await mentorshipService.updateMentorProfile(userId, profileData);
-      
+
       res.status(200).json({
         success: true,
         message: 'Mentor profile updated successfully',
-        data: profile
+        data: profile,
       });
     } catch (error) {
       next(error);
@@ -415,10 +415,10 @@ class MentorshipController {
       const userId = req.user.id;
 
       const profile = await mentorshipService.getMentorProfile(userId);
-      
+
       res.status(200).json({
         success: true,
-        data: profile
+        data: profile,
       });
     } catch (error) {
       next(error);

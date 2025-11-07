@@ -1,4 +1,5 @@
 // src/middleware/errorHandler.js
+import logger from '../utils/logger.js';
 
 /**
  * Custom error class
@@ -41,15 +42,19 @@ const handlePrismaError = (error) => {
 /**
  * Global error handler middleware
  */
+// eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // Log error for debugging
-  console.error('Error:', {
+  // Log error with Winston
+  logger.error('API Error:', {
     message: err.message,
+    statusCode: err.statusCode,
     stack: err.stack,
-    statusCode: err.statusCode
+    url: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
   });
 
   // Handle Prisma errors
@@ -59,9 +64,9 @@ const errorHandler = (err, req, res, next) => {
 
   // Handle validation errors
   if (err.name === 'ValidationError') {
-    const errors = Object.values(err.errors).map(e => ({
+    const errors = Object.values(err.errors).map((e) => ({
       field: e.path,
-      message: e.message
+      message: e.message,
     }));
     error = new AppError('Validation failed', 400, errors);
   }
@@ -81,8 +86,8 @@ const errorHandler = (err, req, res, next) => {
     error: {
       message: error.message || 'Internal server error',
       ...(error.errors && { errors: error.errors }),
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-    }
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    },
   });
 };
 

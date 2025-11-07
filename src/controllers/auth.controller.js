@@ -1,8 +1,8 @@
 // src/controllers/auth.controller.js
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import prisma from '../prisma.js';
-import { AppError } from '../middleware/errorHandler.js';
+import prisma from '../config/prisma.js';
+import { AppError } from '../middlewares/error.js';
 
 class AuthController {
   async register(req, res, next) {
@@ -11,7 +11,7 @@ class AuthController {
 
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
-        where: { email }
+        where: { email },
       });
 
       if (existingUser) {
@@ -30,28 +30,26 @@ class AuthController {
           name,
           email,
           passwordHash: hashedPassword,
-          role
+          role,
         },
         select: {
           id: true,
           name: true,
           email: true,
           role: true,
-          createdAt: true
-        }
+          createdAt: true,
+        },
       });
 
       // Generate JWT
-      const token = jwt.sign(
-        { userId: user.id },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '7d' }
-      );
+      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your-secret-key', {
+        expiresIn: '7d',
+      });
 
       res.status(201).json({
         success: true,
         token,
-        user
+        user,
       });
     } catch (error) {
       next(error);
@@ -72,8 +70,8 @@ class AuthController {
           name: true,
           email: true,
           passwordHash: true,
-          role: true
-        }
+          role: true,
+        },
       });
 
       console.log('Found user:', user ? 'Yes' : 'No');
@@ -95,19 +93,18 @@ class AuthController {
       }
 
       // Generate JWT
-      const token = jwt.sign(
-        { userId: user.id },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '7d' }
-      );
+      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your-secret-key', {
+        expiresIn: '7d',
+      });
 
       // Remove password from user object
-      const { password: _, ...userWithoutPassword } = user;
+      // eslint-disable-next-line no-unused-vars
+      const { password: _password, ...userWithoutPassword } = user;
 
       res.json({
         success: true,
         token,
-        user: userWithoutPassword
+        user: userWithoutPassword,
       });
     } catch (error) {
       next(error);
@@ -123,8 +120,8 @@ class AuthController {
           name: true,
           email: true,
           role: true,
-          createdAt: true
-        }
+          createdAt: true,
+        },
       });
 
       if (!user) {
@@ -133,7 +130,7 @@ class AuthController {
 
       res.json({
         success: true,
-        data: user
+        data: user,
       });
     } catch (error) {
       next(error);

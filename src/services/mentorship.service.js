@@ -1,6 +1,7 @@
 // src/services/mentorship.service.js
-import prisma from '../prisma.js';
-import { AppError } from '../middleware/errorHandler.js';
+import prisma from '../config/prisma.js';
+import { AppError } from '../middlewares/error.js';
+import logger from '../utils/logger.js';
 
 class MentorshipService {
   // ============================================
@@ -8,17 +9,20 @@ class MentorshipService {
   // ============================================
 
   async getMentorRequests(mentorId, status) {
+    logger.info('Getting mentor requests', { mentorId, status });
+
     // First, get the mentor profile
     const mentorProfile = await prisma.mentorshipProfile.findUnique({
-      where: { userId: mentorId }
+      where: { userId: mentorId },
     });
 
     if (!mentorProfile) {
+      logger.warn('Mentor profile not found', { mentorId });
       throw new AppError('Mentor profile not found', 404);
     }
 
     const whereClause = {
-      mentorProfileId: mentorProfile.id
+      mentorProfileId: mentorProfile.id,
     };
 
     if (status) {
@@ -35,18 +39,18 @@ class MentorshipService {
                 id: true,
                 name: true,
                 email: true,
-                avatarUrl: true
-              }
-            }
-          }
+                avatarUrl: true,
+              },
+            },
+          },
         },
         requester: {
           select: {
             id: true,
             name: true,
             email: true,
-            avatarUrl: true
-          }
+            avatarUrl: true,
+          },
         },
         mentorProfile: {
           include: {
@@ -55,26 +59,35 @@ class MentorshipService {
                 id: true,
                 name: true,
                 email: true,
-                avatarUrl: true
-              }
-            }
-          }
-        }
+                avatarUrl: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
+    });
+
+    logger.info('Mentor requests retrieved', {
+      mentorId,
+      count: requests.length,
+      status,
     });
 
     return requests;
   }
 
   async acceptRequest(requestId, mentorId) {
+    logger.info('Accepting mentorship request', { requestId, mentorId });
+
     const mentorProfile = await prisma.mentorshipProfile.findUnique({
-      where: { userId: mentorId }
+      where: { userId: mentorId },
     });
 
     if (!mentorProfile) {
+      logger.warn('Mentor profile not found when accepting request', { mentorId, requestId });
       throw new AppError('Mentor profile not found', 404);
     }
 
@@ -82,8 +95,8 @@ class MentorshipService {
       where: { id: requestId },
       include: {
         project: true,
-        requester: true
-      }
+        requester: true,
+      },
     });
 
     if (!request) {
@@ -102,17 +115,17 @@ class MentorshipService {
       where: { id: requestId },
       data: {
         status: 'ACCEPTED',
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       include: {
         project: true,
         requester: true,
         mentorProfile: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
 
     // Create notification for requester
@@ -121,8 +134,8 @@ class MentorshipService {
         userId: request.requestedBy,
         type: 'MENTOR_JOINED',
         message: `Your mentorship request for project "${request.project.title}" has been accepted!`,
-        link: `/projects/${request.projectId}`
-      }
+        link: `/projects/${request.projectId}`,
+      },
     });
 
     return updatedRequest;
@@ -130,7 +143,7 @@ class MentorshipService {
 
   async declineRequest(requestId, mentorId, reason) {
     const mentorProfile = await prisma.mentorshipProfile.findUnique({
-      where: { userId: mentorId }
+      where: { userId: mentorId },
     });
 
     if (!mentorProfile) {
@@ -140,8 +153,8 @@ class MentorshipService {
     const request = await prisma.mentorshipRequest.findUnique({
       where: { id: requestId },
       include: {
-        project: true
-      }
+        project: true,
+      },
     });
 
     if (!request) {
@@ -160,17 +173,17 @@ class MentorshipService {
       where: { id: requestId },
       data: {
         status: 'REJECTED',
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       include: {
         project: true,
         requester: true,
         mentorProfile: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
 
     // Create notification for requester
@@ -179,8 +192,8 @@ class MentorshipService {
         userId: request.requestedBy,
         type: 'MENTOR_REQUEST',
         message: `Your mentorship request for project "${request.project.title}" was declined${reason ? ': ' + reason : ''}`,
-        link: `/projects/${request.projectId}`
-      }
+        link: `/projects/${request.projectId}`,
+      },
     });
 
     return updatedRequest;
@@ -188,7 +201,7 @@ class MentorshipService {
 
   async getAssignedProjects(mentorId) {
     const mentorProfile = await prisma.mentorshipProfile.findUnique({
-      where: { userId: mentorId }
+      where: { userId: mentorId },
     });
 
     if (!mentorProfile) {
@@ -198,7 +211,7 @@ class MentorshipService {
     const acceptedRequests = await prisma.mentorshipRequest.findMany({
       where: {
         mentorProfileId: mentorProfile.id,
-        status: 'ACCEPTED'
+        status: 'ACCEPTED',
       },
       include: {
         project: {
@@ -208,8 +221,8 @@ class MentorshipService {
                 id: true,
                 name: true,
                 email: true,
-                avatarUrl: true
-              }
+                avatarUrl: true,
+              },
             },
             teamMembers: {
               include: {
@@ -218,40 +231,40 @@ class MentorshipService {
                     id: true,
                     name: true,
                     email: true,
-                    avatarUrl: true
-                  }
-                }
-              }
+                    avatarUrl: true,
+                  },
+                },
+              },
             },
             _count: {
               select: {
                 votes: true,
-                updates: true
-              }
-            }
-          }
+                updates: true,
+              },
+            },
+          },
         },
         sessions: {
           orderBy: {
-            scheduledAt: 'desc'
+            scheduledAt: 'desc',
           },
-          take: 5
-        }
+          take: 5,
+        },
       },
       orderBy: {
-        updatedAt: 'desc'
-      }
+        updatedAt: 'desc',
+      },
     });
 
-    return acceptedRequests.map(req => ({
+    return acceptedRequests.map((req) => ({
       ...req.project,
       mentorshipRequest: {
         id: req.id,
         status: req.status,
         message: req.message,
-        createdAt: req.createdAt
+        createdAt: req.createdAt,
       },
-      recentSessions: req.sessions
+      recentSessions: req.sessions,
     }));
   }
 
@@ -268,15 +281,15 @@ class MentorshipService {
       durationMinutes,
       mode,
       location,
-      notes
+      notes,
     } = sessionData;
 
     // Validate mentorship request
     const mentorshipRequest = await prisma.mentorshipRequest.findUnique({
       where: { id: mentorshipRequestId },
       include: {
-        mentorProfile: true
-      }
+        mentorProfile: true,
+      },
     });
 
     if (!mentorshipRequest) {
@@ -301,29 +314,29 @@ class MentorshipService {
         durationMinutes,
         mode,
         location,
-        notes
+        notes,
       },
       include: {
         mentorshipRequest: {
           include: {
             project: true,
-            requester: true
-          }
+            requester: true,
+          },
         },
         mentor: {
           select: {
             id: true,
             name: true,
             email: true,
-            avatarUrl: true
-          }
+            avatarUrl: true,
+          },
         },
         project: {
           include: {
-            owner: true
-          }
-        }
-      }
+            owner: true,
+          },
+        },
+      },
     });
 
     // Notify project owner
@@ -332,8 +345,8 @@ class MentorshipService {
         userId: session.project.ownerId,
         type: 'GENERAL',
         message: `A new mentorship session has been scheduled for ${new Date(scheduledAt).toLocaleDateString()}`,
-        link: `/projects/${projectId}/mentorship`
-      }
+        link: `/projects/${projectId}/mentorship`,
+      },
     });
 
     return session;
@@ -357,15 +370,15 @@ class MentorshipService {
         { mentorId: userId },
         {
           project: {
-            ownerId: userId
-          }
-        }
+            ownerId: userId,
+          },
+        },
       ];
     }
 
     if (upcoming) {
       whereClause.scheduledAt = {
-        gte: new Date()
+        gte: new Date(),
       };
     }
 
@@ -377,8 +390,8 @@ class MentorshipService {
             id: true,
             name: true,
             email: true,
-            avatarUrl: true
-          }
+            avatarUrl: true,
+          },
         },
         project: {
           include: {
@@ -387,16 +400,16 @@ class MentorshipService {
                 id: true,
                 name: true,
                 email: true,
-                avatarUrl: true
-              }
-            }
-          }
+                avatarUrl: true,
+              },
+            },
+          },
         },
-        mentorshipRequest: true
+        mentorshipRequest: true,
       },
       orderBy: {
-        scheduledAt: upcoming ? 'asc' : 'desc'
-      }
+        scheduledAt: upcoming ? 'asc' : 'desc',
+      },
     });
 
     return sessions;
@@ -411,8 +424,8 @@ class MentorshipService {
             id: true,
             name: true,
             email: true,
-            avatarUrl: true
-          }
+            avatarUrl: true,
+          },
         },
         project: {
           include: {
@@ -421,10 +434,10 @@ class MentorshipService {
                 id: true,
                 name: true,
                 email: true,
-                avatarUrl: true
-              }
-            }
-          }
+                avatarUrl: true,
+              },
+            },
+          },
         },
         mentorshipRequest: {
           include: {
@@ -433,12 +446,12 @@ class MentorshipService {
                 id: true,
                 name: true,
                 email: true,
-                avatarUrl: true
-              }
-            }
-          }
-        }
-      }
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!session) {
@@ -446,8 +459,8 @@ class MentorshipService {
     }
 
     // Check if user has access
-    const hasAccess = 
-      session.mentorId === userId || 
+    const hasAccess =
+      session.mentorId === userId ||
       session.project.ownerId === userId ||
       session.mentorshipRequest.requestedBy === userId;
 
@@ -460,7 +473,7 @@ class MentorshipService {
 
   async updateSession(sessionId, mentorId, updateData) {
     const session = await prisma.mentorshipSession.findUnique({
-      where: { id: sessionId }
+      where: { id: sessionId },
     });
 
     if (!session) {
@@ -476,7 +489,7 @@ class MentorshipService {
       data: {
         ...updateData,
         scheduledAt: updateData.scheduledAt ? new Date(updateData.scheduledAt) : undefined,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       include: {
         mentor: {
@@ -484,12 +497,12 @@ class MentorshipService {
             id: true,
             name: true,
             email: true,
-            avatarUrl: true
-          }
+            avatarUrl: true,
+          },
         },
         project: true,
-        mentorshipRequest: true
-      }
+        mentorshipRequest: true,
+      },
     });
 
     return updatedSession;
@@ -500,8 +513,8 @@ class MentorshipService {
       where: { id: sessionId },
       include: {
         project: true,
-        mentorshipRequest: true
-      }
+        mentorshipRequest: true,
+      },
     });
 
     if (!session) {
@@ -509,7 +522,7 @@ class MentorshipService {
     }
 
     // Check if user is authorized to join
-    const canJoin = 
+    const canJoin =
       session.mentorId === userId ||
       session.project.ownerId === userId ||
       session.mentorshipRequest.requestedBy === userId;
@@ -531,7 +544,7 @@ class MentorshipService {
 
   async deleteSession(sessionId, mentorId) {
     const session = await prisma.mentorshipSession.findUnique({
-      where: { id: sessionId }
+      where: { id: sessionId },
     });
 
     if (!session) {
@@ -543,7 +556,7 @@ class MentorshipService {
     }
 
     await prisma.mentorshipSession.delete({
-      where: { id: sessionId }
+      where: { id: sessionId },
     });
 
     return true;
@@ -557,8 +570,8 @@ class MentorshipService {
     const session = await prisma.mentorshipSession.findUnique({
       where: { id: sessionId },
       include: {
-        project: true
-      }
+        project: true,
+      },
     });
 
     if (!session) {
@@ -576,12 +589,12 @@ class MentorshipService {
       data: {
         notes,
         recordingUrl,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       include: {
         mentor: true,
-        project: true
-      }
+        project: true,
+      },
     });
 
     // Notify project owner
@@ -590,8 +603,8 @@ class MentorshipService {
         userId: session.project.ownerId,
         type: 'GENERAL',
         message: `Feedback has been added to your mentorship session`,
-        link: `/projects/${session.projectId}/mentorship/sessions/${sessionId}`
-      }
+        link: `/projects/${session.projectId}/mentorship/sessions/${sessionId}`,
+      },
     });
 
     return updatedSession;
@@ -600,7 +613,7 @@ class MentorshipService {
   async submitProjectEvaluation(projectId, mentorId, evaluationData) {
     // Verify mentor has an active mentorship for this project
     const mentorProfile = await prisma.mentorshipProfile.findUnique({
-      where: { userId: mentorId }
+      where: { userId: mentorId },
     });
 
     if (!mentorProfile) {
@@ -611,8 +624,8 @@ class MentorshipService {
       where: {
         projectId,
         mentorProfileId: mentorProfile.id,
-        status: 'ACCEPTED'
-      }
+        status: 'ACCEPTED',
+      },
     });
 
     if (!mentorshipRequest) {
@@ -620,7 +633,7 @@ class MentorshipService {
     }
 
     const project = await prisma.project.findUnique({
-      where: { id: projectId }
+      where: { id: projectId },
     });
 
     if (!project) {
@@ -635,7 +648,7 @@ class MentorshipService {
         projectId,
         authorId: mentorId,
         title: title || 'Mentor Evaluation',
-        content: content
+        content: content,
       },
       include: {
         author: {
@@ -644,27 +657,27 @@ class MentorshipService {
             name: true,
             email: true,
             avatarUrl: true,
-            role: true
-          }
+            role: true,
+          },
         },
-        project: true
-      }
+        project: true,
+      },
     });
 
     // Update mentor rating if provided
     if (rating !== undefined) {
       const currentRating = mentorProfile.rating;
       const sessions = await prisma.mentorshipSession.count({
-        where: { mentorId }
+        where: { mentorId },
       });
-      
-      const newRating = ((currentRating * sessions) + rating) / (sessions + 1);
+
+      const newRating = (currentRating * sessions + rating) / (sessions + 1);
 
       await prisma.mentorshipProfile.update({
         where: { id: mentorProfile.id },
         data: {
-          rating: newRating
-        }
+          rating: newRating,
+        },
       });
     }
 
@@ -674,8 +687,8 @@ class MentorshipService {
         userId: project.ownerId,
         type: 'PROJECT_UPDATE',
         message: `Your mentor has submitted an evaluation for "${project.title}"`,
-        link: `/projects/${projectId}/updates`
-      }
+        link: `/projects/${projectId}/updates`,
+      },
     });
 
     return evaluation;
@@ -686,8 +699,8 @@ class MentorshipService {
       where: {
         projectId,
         author: {
-          role: 'MENTOR'
-        }
+          role: 'MENTOR',
+        },
       },
       include: {
         author: {
@@ -696,13 +709,13 @@ class MentorshipService {
             name: true,
             email: true,
             avatarUrl: true,
-            role: true
-          }
-        }
+            role: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
 
     return evaluations;
@@ -717,10 +730,10 @@ class MentorshipService {
             id: true,
             name: true,
             email: true,
-            avatarUrl: true
-          }
-        }
-      }
+            avatarUrl: true,
+          },
+        },
+      },
     });
 
     if (!session) {
@@ -734,7 +747,7 @@ class MentorshipService {
       mentor: session.mentor,
       scheduledAt: session.scheduledAt,
       durationMinutes: session.durationMinutes,
-      updatedAt: session.updatedAt
+      updatedAt: session.updatedAt,
     };
   }
 
@@ -752,14 +765,14 @@ class MentorshipService {
         skills,
         availability,
         hourlyCapacity,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       create: {
         userId,
         bio,
         skills,
         availability: availability !== undefined ? availability : true,
-        hourlyCapacity: hourlyCapacity || 5
+        hourlyCapacity: hourlyCapacity || 5,
       },
       include: {
         user: {
@@ -768,10 +781,10 @@ class MentorshipService {
             name: true,
             email: true,
             avatarUrl: true,
-            role: true
-          }
-        }
-      }
+            role: true,
+          },
+        },
+      },
     });
 
     return profile;
@@ -789,19 +802,19 @@ class MentorshipService {
             avatarUrl: true,
             role: true,
             githubHandle: true,
-            linkedinUrl: true
-          }
+            linkedinUrl: true,
+          },
         },
         _count: {
           select: {
             mentorshipRequests: {
               where: {
-                status: 'ACCEPTED'
-              }
-            }
-          }
-        }
-      }
+                status: 'ACCEPTED',
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!profile) {
@@ -810,13 +823,13 @@ class MentorshipService {
 
     // Get total sessions count
     const sessionsCount = await prisma.mentorshipSession.count({
-      where: { mentorId: userId }
+      where: { mentorId: userId },
     });
 
     return {
       ...profile,
       totalSessions: sessionsCount,
-      activeMentorships: profile._count.mentorshipRequests
+      activeMentorships: profile._count.mentorshipRequests,
     };
   }
 }
