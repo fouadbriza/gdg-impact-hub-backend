@@ -10,6 +10,7 @@ import sgMail from '@sendgrid/mail';
 import env from './config/env.js';
 import prisma from './config/prisma.js';
 import passport from './config/passport.js';
+import redis from './config/redis.js';
 
 // Middleware imports
 import { errorHandler, notFound } from './middlewares/error.js';
@@ -103,6 +104,9 @@ const startServer = async () => {
     await prisma.$connect();
     logger.info('✅ Database connected successfully');
 
+    // Initialize Redis
+    await redis.initializeRedis();
+
     // Start server
     app.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
@@ -119,12 +123,18 @@ const startServer = async () => {
 process.on('SIGINT', async () => {
   logger.info('\n🛑 Shutting down gracefully...');
   await prisma.$disconnect();
+  if (redis.getRedisClient()) {
+    await redis.getRedisClient().quit();
+  }
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   logger.info('\n🛑 Shutting down gracefully...');
   await prisma.$disconnect();
+  if (redis.getRedisClient()) {
+    await redis.getRedisClient().quit();
+  }
   process.exit(0);
 });
 
