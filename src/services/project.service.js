@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.js';
 import { AppError } from '../middlewares/error.js';
 import logger from '../utils/logger.js';
+import cacheService from './cache.service.js';
 
 /**
  * Get all projects
@@ -8,6 +9,22 @@ import logger from '../utils/logger.js';
  */
 export const getAllProjectsService = async () => {
   logger.info('Fetching all projects');
+
+  // Generate cache key for projects list
+  const cacheKey = cacheService.generateKey('PROJECTS_LIST');
+
+  try {
+    // Try to get from cache first
+    const cachedProjects = await cacheService.get(cacheKey);
+    if (cachedProjects) {
+      logger.debug('Projects list retrieved from cache', { count: cachedProjects.length });
+      return cachedProjects;
+    }
+  } catch (cacheError) {
+    logger.warn('Cache get failed for projects list, proceeding with DB query', { 
+      error: cacheError.message 
+    });
+  }
 
   const projects = await prisma.project.findMany({
     include: {
@@ -22,6 +39,18 @@ export const getAllProjectsService = async () => {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  // Cache the projects list
+  try {
+    await cacheService.set(
+      cacheKey,
+      projects,
+      cacheService.getTTL('PROJECTS_LIST')
+    );
+    logger.debug('Projects list cached', { count: projects.length, cacheKey });
+  } catch (cacheError) {
+    logger.warn('Failed to cache projects list', { count: projects.length, error: cacheError.message });
+  }
 
   logger.info(`Successfully fetched ${projects.length} projects`);
   return projects;
@@ -67,6 +96,22 @@ export const createProjectService = async (data, ownerId) => {
     },
   });
 
+  // Invalidate projects list cache after creating a new project
+  try {
+    const projectsListCacheKey = cacheService.generateKey('PROJECTS_LIST');
+    await cacheService.delete(projectsListCacheKey);
+    
+    logger.debug('Projects list cache invalidated after creation', { 
+      projectId: project.id, 
+      cacheKey: projectsListCacheKey 
+    });
+  } catch (cacheError) {
+    logger.warn('Failed to invalidate projects list cache after creation', { 
+      projectId: project.id, 
+      error: cacheError.message 
+    });
+  }
+
   logger.info('Successfully created project', {
     projectId: project.id,
     title: project.title,
@@ -84,6 +129,23 @@ export const createProjectService = async (data, ownerId) => {
 export const getProjectService = async (projectId) => {
   logger.info('Fetching project by ID', { projectId });
 
+  // Generate cache key for project details
+  const cacheKey = cacheService.generateKey('PROJECT_DETAILS', projectId);
+
+  try {
+    // Try to get from cache first
+    const cachedProject = await cacheService.get(cacheKey);
+    if (cachedProject) {
+      logger.debug('Project retrieved from cache', { projectId });
+      return cachedProject;
+    }
+  } catch (cacheError) {
+    logger.warn('Cache get failed for project, proceeding with DB query', { 
+      projectId, 
+      error: cacheError.message 
+    });
+  }
+
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
@@ -100,6 +162,18 @@ export const getProjectService = async (projectId) => {
   if (!project) {
     logger.warn('Project not found', { projectId });
     throw new AppError('Project not found', 404);
+  }
+
+  // Cache the project details
+  try {
+    await cacheService.set(
+      cacheKey,
+      project,
+      cacheService.getTTL('PROJECT_DETAILS')
+    );
+    logger.debug('Project cached', { projectId, cacheKey });
+  } catch (cacheError) {
+    logger.warn('Failed to cache project', { projectId, error: cacheError.message });
   }
 
   logger.info('Project fetched successfully', {
@@ -170,6 +244,22 @@ export const updateProjectService = async (id, data, userId) => {
     },
   });
 
+  // Invalidate project cache after update
+  try {
+    const projectCacheKey = cacheService.generateKey('PROJECT_DETAILS', updatedProject.id);
+    await cacheService.delete(projectCacheKey);
+    
+    logger.debug('Project cache invalidated after update', { 
+      projectId: updatedProject.id, 
+      cacheKey: projectCacheKey 
+    });
+  } catch (cacheError) {
+    logger.warn('Failed to invalidate project cache after update', { 
+      projectId: updatedProject.id, 
+      error: cacheError.message 
+    });
+  }
+
   logger.info('Project updated successfully', {
     projectId: updatedProject.id,
     title: updatedProject.title,
@@ -211,6 +301,22 @@ export const deleteProjectService = async (id, userId) => {
     where: { id },
   });
 
+  // Invalidate project cache after deletion
+  try {
+    const projectCacheKey = cacheService.generateKey('PROJECT_DETAILS', deletedProject.id);
+    await cacheService.delete(projectCacheKey);
+    
+    logger.debug('Project cache invalidated after deletion', { 
+      projectId: deletedProject.id, 
+      cacheKey: projectCacheKey 
+    });
+  } catch (cacheError) {
+    logger.warn('Failed to invalidate project cache after deletion', { 
+      projectId: deletedProject.id, 
+      error: cacheError.message 
+    });
+  }
+
   logger.info('Project deleted successfully', {
     projectId: deletedProject.id,
     title: deletedProject.title,
@@ -227,6 +333,27 @@ export const deleteProjectService = async (id, userId) => {
  */
 export const searchProjectsService = async (filters) => {
   logger.info('Searching projects with filters', { filters });
+
+  // Generate cache key for search results based on filters
+  const filtersString = JSON.stringify(filters);
+  const cacheKey = cacheService.generateKey('PROJECTS_LIST', filtersString);
+
+  try {
+    // Try to get from cache first
+    const cachedProjects = await cacheService.get(cacheKey);
+    if (cachedProjects) {
+      logger.debug('Search results retrieved from cache', { 
+        filterCount: Object.keys(filters).length, 
+        resultCount: cachedProjects.length 
+      });
+      return cachedProjects;
+    }
+  } catch (cacheError) {
+    logger.warn('Cache get failed for search results, proceeding with DB query', { 
+      filters,
+      error: cacheError.message 
+    });
+  }
 
   const { title, category, impactArea, status } = filters;
 
@@ -258,6 +385,26 @@ export const searchProjectsService = async (filters) => {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  // Cache the search results
+  try {
+    await cacheService.set(
+      cacheKey,
+      projects,
+      cacheService.getTTL('PROJECTS_LIST')
+    );
+    logger.debug('Search results cached', { 
+      filterCount: Object.keys(filters).length, 
+      resultCount: projects.length, 
+      cacheKey 
+    });
+  } catch (cacheError) {
+    logger.warn('Failed to cache search results', { 
+      filterCount: Object.keys(filters).length, 
+      resultCount: projects.length, 
+      error: cacheError.message 
+    });
+  }
 
   logger.info('Projects search completed', {
     filterCount: Object.keys(where).length,

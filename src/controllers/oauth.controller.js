@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import cacheService from '../services/cache.service.js';
+import githubService from '../services/github.service.js';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
@@ -104,19 +106,11 @@ export async function githubCallback(req, res) {
     const accessToken = tokenData.access_token;
     if (!accessToken) return res.status(400).json({ message: 'Failed to get access token' });
 
-    // get user info
-    const userResponse = await fetch('https://api.github.com/user', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const githubUser = await userResponse.json();
+    // Use GitHub service to fetch user data with caching
+    const githubUser = await githubService.getGitHubUser(accessToken);
 
-    // get user emails
-    const emailResponse = await fetch('https://api.github.com/user/emails', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const emailsData = await emailResponse.json();
-
-    const emails = Array.isArray(emailsData) ? emailsData : [];
+    // Use GitHub service to fetch user emails with caching
+    const emails = await githubService.getGitHubUserEmails(accessToken);
 
     // select primary verified email
     let primaryEmail = emails.find((e) => e.primary && e.verified)?.email;
@@ -147,6 +141,14 @@ export async function githubCallback(req, res) {
         },
       });
     }
+
+    // Cache the user data in our system too (if needed)
+    const userCacheKey = cacheService.generateKey('GITHUB_USER', user.id);
+    await cacheService.set(
+      userCacheKey,
+      user,
+      cacheService.getTTL('GITHUB_USER')
+    );
 
     const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 

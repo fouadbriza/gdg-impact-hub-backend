@@ -18,6 +18,7 @@ const env = {
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
   SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,
+  REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
 };
 
 // Validate required environment variables
@@ -33,6 +34,10 @@ const requiredEnvVars = [
   'CLOUDINARY_API_SECRET',
   'SENDGRID_API_KEY',
   'EMAIL_FROM',
+];
+
+const optionalEnvVars = [
+  'REDIS_URL',
 ];
 
 const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
